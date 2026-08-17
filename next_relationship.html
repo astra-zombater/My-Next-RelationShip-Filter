@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Next Relationship Filter</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background-color: #000;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    .filter-container {
+      position: relative;
+      width: 100vw;
+      max-width: 700px;
+      height: 100vh;
+      max-height: 860px;
+      background: #000;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+
+    /* Live Webcam Background */
+    #webcam {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+      z-index: 1;
+    }
+
+    /* Canvas overlay */
+    #gameCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .ui-layer {
+      position: relative;
+      z-index: 3;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      padding: 40px 20px 30px;
+      pointer-events: none;
+    }
+
+    h1 {
+      color: #ff5ebc;
+      font-size: 2.2rem;
+      text-shadow: 0 0 12px rgba(0, 0, 0, 0.9), 0 0 6px #000;
+      text-align: center;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+    }
+
+    .controls-info {
+      background: rgba(0, 0, 0, 0.75);
+      padding: 12px 20px;
+      border-radius: 25px;
+      font-size: 0.95rem;
+      text-align: center;
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+      pointer-events: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .voice-status {
+      color: #00ffcc;
+      font-size: 0.85rem;
+      font-weight: bold;
+    }
+
+    /* Video Record Toggle UI */
+    .record-toggle {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      color: white;
+      padding: 5px 12px;
+      border-radius: 15px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .record-toggle.active {
+      background: #ff2a8d;
+      border-color: #ff5ebc;
+      font-weight: bold;
+    }
+
+    .rec-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #fff;
+    }
+
+    .record-toggle.active .rec-dot {
+      background: #00ffcc;
+      box-shadow: 0 0 6px #00ffcc;
+    }
+  </style>
+</head>
+<body>
+
+<div class="filter-container" id="gameArea">
+  <video id="webcam" autoplay playsinline muted></video>
+  <canvas id="gameCanvas"></canvas>
+
+  <div class="ui-layer">
+    <h1>My Next Relationship</h1>
+    <div class="controls-info">
+      <div>Say <b>"START"</b> or Tap Screen</div>
+      <button class="record-toggle" id="recordBtn" onclick="toggleRecording(event)">
+        <span class="rec-dot"></span> Record Video: OFF
+      </button>
+      <div class="voice-status" id="voiceStatus">Mic Status: Initializing...</div>
+      <div class="text small-5" style="color: chartreuse; font-size: 0.75rem; margin-top: 4px;">
+        Made with &#9829; by ASTRA ZOMBATER &copy;
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  const video = document.getElementById('webcam');
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  const voiceStatus = document.getElementById('voiceStatus');
+  const gameArea = document.getElementById('gameArea');
+  const recordBtn = document.getElementById('recordBtn');
+
+  const categories = [
+    { 
+      name: 'Age', 
+      values: Array.from({ length: 70 }, (_, i) => (i + 1).toString()) 
+    },
+    { 
+      name: 'Height', 
+      values: [4, 5, 6].flatMap(ft => 
+        Array.from({ length: 13 }, (_, inVal) => `${ft}.${inVal}`)
+      ) 
+    },
+    { 
+      name: 'Job', 
+      values: [
+        'CEO 🕶️', 'Electrician 🧑‍🔧', 'Engineer 💻', 'Youtuber 📱', 'Investor 📈', 
+        'Secret Agent 🕵️', 'Napper 😴', 'Gamer 🎮', 'Broke 💔', 'Begger 🙏', 
+        'Security Guard 💂', 'Meme Admin 🐸', 'Professional Yawner 🥱', 'Crypto Bro 🚀', 
+        'Professional Stalker 👁️', 'Ghost Hunter 👻', 'Unemployed Legend 🛋️', 
+        'Bathroom Singer 🎤', 'Couch Potato 🥔'
+      ] 
+    },
+    { 
+      name: 'Gender', 
+      values: [
+        'Female 💃', 'Male 🧔', 'Robot 🤖', 'Alien 👽', 'Non-Binary 🌈', 
+        'Transgender ⚧️', 'Unicorn 🦄', 'Horse 🐴', 'Dinosaur 🦖', 'Attack Helicopter 🚁', 
+        'NPC 👤', 'WiFi Router 📶', 'Toaster 🍞', 'Main Character ✨'
+      ] 
+    },
+    { 
+      name: 'Personality', 
+      values: [
+        'Extroverted ☀️', 'Romantic 💖', 'Ambitious 👑', 'Introverted 😒', 'Friendly 🐶', 
+        'Sarcastic 🌶️', 'Creative 🎨', 'Saudade 😔', 'Delusional 😵‍💫', 'Chaotic Evil 😈', 
+        'Overthinker 🧠', 'Drama Queen 👑', 'Always Hungry 🍕', 'Emotionally Unavailable 🗿', 
+        'Psychopath 🔪'
+      ] 
+    },
+    { 
+      name: 'Hobby', 
+      values: [
+        'Painting 🎨', 'Dancing 💃', 'Cooking 🍳', 'Sleeping 😴', 'Gaming 🎮', 
+        'Gardening 🌿', 'Blabbering 😃', 'Overthinking 🫠', 'Eavesdropping 👂', 
+        'Talking to Wall 🧗', 'Doomscrolling 📲', 'Collecting Red Flags 🚩', 
+        'Creating Scenarios 🎬', 'Fighting in Comments 🥊'
+      ] 
+    }
+  ];
+
+  let currentCategoryIndex = 0;
+  let isCycling = false;
+  let cycleInterval = null;
+  let autoTimer = null;
+  let currentDisplayValue = '?';
+  let lockedTraits = [];
+
+  // Recording State Variables
+  let isRecordEnabled = false;
+  let mediaRecorder = null;
+  let recordedChunks = [];
+  let recordCanvas = document.createElement('canvas');
+  let recordCtx = recordCanvas.getContext('2d');
+  let recordAnimFrame = null;
+
+  function toggleRecording(e) {
+    e.stopPropagation(); // Prevents click from triggering sequence restart
+    isRecordEnabled = !isRecordEnabled;
+    if (isRecordEnabled) {
+      recordBtn.classList.add('active');
+      recordBtn.innerHTML = `<span class="rec-dot"></span> Record Video: ON`;
+    } else {
+      recordBtn.classList.remove('active');
+      recordBtn.innerHTML = `<span class="rec-dot"></span> Record Video: OFF`;
+    }
+  }
+
+  async function setupCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false
+      });
+      video.srcObject = stream;
+    } catch (err) {
+      voiceStatus.textContent = "Camera unavailable";
+      voiceStatus.style.color = "#ff4444";
+    }
+  }
+
+  function resizeCanvas() {
+    canvas.width = gameArea.clientWidth;
+    canvas.height = gameArea.clientHeight;
+    draw();
+  }
+
+  window.addEventListener('resize', resizeCanvas);
+
+  function getStepPoints() {
+    const totalSteps = categories.length;
+    const padding = 95;
+    const availableWidth = canvas.width - (padding * 2);
+    const stepX = availableWidth / (totalSteps - 1);
+    const yPattern = [0.38, 0.16, 0.45, 0.16, 0.38, 0.16];
+
+    return categories.map((cat, i) => ({
+      x: padding + (i * stepX),
+      y: canvas.height * yPattern[i % yPattern.length]
+    }));
+  }
+// Made by ASTRA ZOMBATER
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const points = getStepPoints();
+
+    if (points.length > 1) {
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+      }
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+    }
+
+    points.forEach((pt, i) => {
+      const isPast = i < currentCategoryIndex;
+      const isCurrent = i === currentCategoryIndex;
+
+      if (isCurrent) {
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 16, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 64, 129, 0.4)';
+        ctx.fill();
+      }
+
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, isCurrent ? 11 : 8, 0, Math.PI * 2);
+      ctx.fillStyle = '#ff2a8d';
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      let labelText = '';
+      if (isPast) {
+        labelText = `${categories[i].name}: ${lockedTraits[i]}`;
+      } else if (isCurrent) {
+        labelText = `${categories[i].name}: ${currentDisplayValue}`;
+      } else {
+        labelText = `${categories[i].name}: ?`;
+      }
+
+      ctx.font = '900 15px sans-serif';
+      ctx.textAlign = 'center';
+
+      const yOffset = (i % 2 === 0) ? 32 : -22;
+      const textY = pt.y + yOffset;
+
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 3;
+      ctx.strokeText(labelText, pt.x, textY);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(labelText, pt.x, textY);
+    });
+  }
+
+  // Composite Video Recording Engine
+// Composite Video Recording Engine with MP4 Support
+  function startRecordingStream() {
+    recordedChunks = [];
+    recordCanvas.width = canvas.width;
+    recordCanvas.height = canvas.height;
+
+    function renderComposite() {
+      recordCtx.save();
+      recordCtx.translate(recordCanvas.width, 0);
+      recordCtx.scale(-1, 1);
+      recordCtx.drawImage(video, 0, 0, recordCanvas.width, recordCanvas.height);
+      recordCtx.restore();
+
+      recordCtx.drawImage(canvas, 0, 0);
+      recordAnimFrame = requestAnimationFrame(renderComposite);
+    }
+    renderComposite();
+// Made by ASTRA ZOMBATER
+    const stream = recordCanvas.captureStream(30);
+
+    // Determine if browser supports native MP4 encoding
+    const mimeType = MediaRecorder.isTypeSupported('video/mp4') 
+      ? 'video/mp4' 
+      : 'video/webm';
+    
+    const fileExtension = mimeType === 'video/mp4' ? 'mp4' : 'webm';
+
+    mediaRecorder = new MediaRecorder(stream, { mimeType });
+
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) recordedChunks.push(e.data);
+    };
+// Made by ASTRA ZOMBATER
+    mediaRecorder.onstop = () => {
+      cancelAnimationFrame(recordAnimFrame);
+      const blob = new Blob(recordedChunks, { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `filter_video_${Date.now()}.${fileExtension}`;
+      a.click();
+    };
+
+    mediaRecorder.start();
+  }
+  function stopRecordingStream() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
+  }
+
+  // Automatic Screenshot Generator
+  function captureScreenshot() {
+    const offscreenCanvas = document.createElement('canvas');
+    offscreenCanvas.width = canvas.width;
+    offscreenCanvas.height = canvas.height;
+    const offCtx = offscreenCanvas.getContext('2d');
+
+    offCtx.save();
+    offCtx.translate(offscreenCanvas.width, 0);
+    offCtx.scale(-1, 1);
+    offCtx.drawImage(video, 0, 0, offscreenCanvas.width, offscreenCanvas.height);
+    offCtx.restore();
+
+    offCtx.drawImage(canvas, 0, 0);
+// Made by ASTRA ZOMBATER
+    const dataUrl = offscreenCanvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.download = `filter_result_${Date.now()}.png`;
+    link.href = dataUrl;
+    link.click();
+    voiceStatus.textContent = isRecordEnabled ? "Finished! Saved SS & Video 📸🎥" : "Finished! Screenshot Saved 📸";
+  }
+
+  function runAutoStep() {
+    if (currentCategoryIndex >= categories.length) {
+      draw();
+      if (isRecordEnabled) stopRecordingStream();
+      captureScreenshot();
+      return;
+    }
+
+    isCycling = true;
+    const currentValues = categories[currentCategoryIndex].values;
+
+    cycleInterval = setInterval(() => {
+      const randomIndex = Math.floor(Math.random() * currentValues.length);
+      currentDisplayValue = currentValues[randomIndex];
+      draw();
+    }, 65);
+
+    const spinDuration = 1400 + Math.floor(Math.random() * 800);
+
+    autoTimer = setTimeout(() => {
+      clearInterval(cycleInterval);
+      isCycling = false;
+
+      const finalIndex = Math.floor(Math.random() * currentValues.length);
+      currentDisplayValue = currentValues[finalIndex];
+
+      lockedTraits.push(currentDisplayValue);
+      currentCategoryIndex++;
+
+      draw();
+
+      if (currentCategoryIndex < categories.length) {
+        currentDisplayValue = '?';
+        autoTimer = setTimeout(runAutoStep, 1000);
+      } else {
+        if (isRecordEnabled) stopRecordingStream();
+        captureScreenshot();
+      }
+    }, spinDuration);
+  }
+// Made by ASTRA ZOMBATER
+  function startAutomatedSequence() {
+    // Immediately clear any existing intervals/timeouts/recorders to allow mid-sequence interruptions
+    clearTimeout(autoTimer);
+    clearInterval(cycleInterval);
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') stopRecordingStream();
+
+    currentCategoryIndex = 0;
+    isCycling = false;
+    lockedTraits = [];
+    currentDisplayValue = '?';
+
+    voiceStatus.textContent = "Running Filter...";
+
+    if (isRecordEnabled) {
+      startRecordingStream();
+    }
+
+    runAutoStep();
+  }
+
+  function handleTrigger() {
+    startAutomatedSequence();
+  }
+
+  // Reliable Continuous Voice Engine
+  let recognition = null;
+  function setupVoiceRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      voiceStatus.textContent = "Voice control unsupported (Tap screen)";
+      voiceStatus.style.color = "#ffb703";
+      return;
+    }
+
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      voiceStatus.textContent = "Listening... Say 'START'";
+      voiceStatus.style.color = "#00ffcc";
+      
+    };
+
+    recognition.onerror = () => {
+      // Auto-recover on speech error
+    };
+
+    recognition.onend = () => {
+      try { recognition.start(); } catch(e) {}
+    };
+
+    recognition.onresult = (event) => {
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript.trim().toLowerCase();
+        // Made by ASTRA ZOMBATER
+        if (
+          transcript.includes('start') || 
+          transcript.includes('stop') || 
+          transcript.includes('go') || 
+          transcript.includes('play') || 
+          transcript.includes('ok') || 
+          transcript.includes('run') ||
+          transcript.includes('shoot') ||
+          transcript.includes('begin')
+        ) {
+          handleTrigger();
+          break;
+        }
+      }
+    };
+
+    try {
+      recognition.start();
+    } catch(e) {}
+  }
+
+  gameArea.addEventListener('click', handleTrigger);
+
+  setupCamera();
+  resizeCanvas();
+  setupVoiceRecognition();
+</script>
+
+</body>
+</html>
