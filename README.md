@@ -23,7 +23,7 @@ A webcam-composite AR filter that uses the Web Speech API to tell you exactly wh
 ## 🚀 Live Demo
 
 Check out the live app running on GitHub Pages:
-👉 **[https://github.com/astra-zombater/Next-RelationShip-Filter](https://astra-zombater.github.io/my-next-relationship-filter/)**
+👉 **[https://github.com/astra-zombater/My-Next-RelationShip-Filter](https://astra-zombater.github.io/My-Next-RelationShip-Filter/)**
 
 ---
 
@@ -33,4 +33,4 @@ No build tools or npm dependencies required.
 
 1. Clone the repository:
    ```bash
-   git clone [https://github.com/astra-zombater/Next-RelationShip-Filter.git](https://github.com/astra-zombater/Next-RelationShip-Filter.git)#
+   git clone [https://github.com/astra-zombater/My-Next-RelationShip-Filter.git](https://github.com/astra-zombater/My-Next-RelationShip-Filter.git)#
